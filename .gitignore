@@ -14,3 +14,9 @@ target/
 **/*.project
 **/*.classpath
 **/*.settings
+
+# Local environment / secrets
+.env
+
+# OWASP dependency-check reports
+**/dependency-check-report.*
