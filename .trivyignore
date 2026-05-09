@@ -1,0 +1,17 @@
+# Known CVEs that originate from the Spring Boot 2.0.3 / Spring Cloud Finchley
+# baseline used throughout this repo. Fixing them requires upgrading the entire
+# framework stack (Spring Boot 2.0.3 -> 2.7.x or 3.x and Spring Cloud
+# Finchley -> Hoxton/2020.x/2021.x/2022.x), which is a separate, breaking
+# change tracked outside of the dependency-vulnerability fix PR.
+#
+# Re-evaluate every entry below after the Spring Boot upgrade lands.
+
+# Spring4Shell. Fixed in Spring Boot 2.5.12 / 2.6.6.
+CVE-2022-22965
+
+# Spring Boot Actuator authentication bypass. Fixed in Spring Boot 3.5.12 / 4.0.4.
+CVE-2026-22733
+
+# Spring Cloud Config Server path traversal via profile.
+# Fixed in Spring Cloud Config 4.3.2 / 5.0.2.
+CVE-2026-22739

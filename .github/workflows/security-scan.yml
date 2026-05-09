@@ -1,0 +1,55 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  owasp-dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+      # The Spring Boot 2.0.3 / Spring Cloud Finchley baseline this repo is on
+      # carries many HIGH/CRITICAL CVEs that can only be resolved by upgrading
+      # the entire framework stack. We still generate and upload the report so
+      # those findings are visible, but we don't block PRs on them; once a
+      # Spring Boot upgrade lands, drop `continue-on-error` so net-new CVEs
+      # block the build again.
+      - name: OWASP Dependency Check
+        continue-on-error: true
+        run: mvn verify -P owasp -DskipTests
+      - name: Upload OWASP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-reports
+          path: '**/dependency-check-report.*'
+
+  docker-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint Dockerfiles
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          recursive: true
+
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          trivyignores: '.trivyignore'
