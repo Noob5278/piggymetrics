@@ -1,7 +1,7 @@
 FROM eclipse-temurin:8-jre
 LABEL maintainer="Alexander Lukyanchikov <sqshq@sqshq.com>"
 
-ADD ./target/registry.jar /app/
+COPY ./target/registry.jar /app/
 CMD ["java", "-Xmx200m", "-jar", "/app/registry.jar"]
 
 EXPOSE 8761
