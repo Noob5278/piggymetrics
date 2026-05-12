@@ -14,6 +14,8 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -145,5 +147,57 @@ public class AccountServiceTest {
 
 		when(accountService.findByName("test")).thenReturn(null);
 		accountService.saveChanges("test", update);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void shouldFailOnDuplicateAccountCreation() {
+
+		User user = new User();
+		user.setUsername("existing");
+		user.setPassword("password");
+
+		Account existing = new Account();
+		existing.setName("existing");
+
+		when(repository.findByName("existing")).thenReturn(existing);
+
+		try {
+			accountService.create(user);
+		} finally {
+			verify(repository, times(1)).findByName("existing");
+			verify(authClient, never()).createUser(any(User.class));
+			verify(repository, never()).save(any(Account.class));
+		}
+	}
+
+	@Test(expected = NullPointerException.class)
+	public void shouldHandleNullUserInCreate() {
+		accountService.create(null);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void shouldHandleNullNameInFindByName() {
+		accountService.findByName(null);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void shouldHandleNullUpdateInSaveChanges() {
+		when(repository.findByName("test")).thenReturn(null);
+		accountService.saveChanges("test", null);
+	}
+
+	@Test
+	public void shouldNotCallStatisticsClientWhenAccountNotFound() {
+
+		when(repository.findByName("missing")).thenReturn(null);
+
+		try {
+			accountService.saveChanges("missing", new Account());
+		} catch (IllegalArgumentException expected) {
+			// expected when account is not found
+		}
+
+		verify(statisticsClient, never()).updateStatistics(anyString(), any(Account.class));
+		verify(repository, never()).save(any(Account.class));
 	}
 }

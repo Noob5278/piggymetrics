@@ -5,6 +5,7 @@ import com.piggymetrics.account.domain.Currency;
 import com.piggymetrics.account.domain.Item;
 import com.piggymetrics.account.domain.Saving;
 import com.piggymetrics.account.domain.TimePeriod;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,8 @@ import java.util.Arrays;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 @RunWith(SpringRunner.class)
 @DataMongoTest
@@ -23,6 +26,11 @@ public class AccountRepositoryTest {
 
 	@Autowired
 	private AccountRepository repository;
+
+	@Before
+	public void cleanUp() {
+		repository.deleteAll();
+	}
 
 	@Test
 	public void shouldFindAccountByName() {
@@ -35,6 +43,51 @@ public class AccountRepositoryTest {
 		assertEquals(stub.getNote(), found.getNote());
 		assertEquals(stub.getIncomes().size(), found.getIncomes().size());
 		assertEquals(stub.getExpenses().size(), found.getExpenses().size());
+	}
+
+	@Test
+	public void shouldUpdateAccount() {
+
+		Account stub = getStubAccount();
+		repository.save(stub);
+
+		Account loaded = repository.findByName(stub.getName());
+		assertNotNull(loaded);
+
+		loaded.setNote("updated note");
+		Date newLastSeen = new Date();
+		loaded.setLastSeen(newLastSeen);
+		repository.save(loaded);
+
+		Account updated = repository.findByName(stub.getName());
+		assertEquals("updated note", updated.getNote());
+		assertEquals(newLastSeen, updated.getLastSeen());
+
+		long count = repository.count();
+		assertEquals(1L, count);
+	}
+
+	@Test
+	public void shouldHandleDuplicateNames() {
+
+		Account first = getStubAccount();
+		repository.save(first);
+
+		Account duplicate = getStubAccount();
+		duplicate.setNote("second note");
+		repository.save(duplicate);
+
+		long count = repository.count();
+		assertEquals("name is the @Id so duplicates overwrite", 1L, count);
+
+		Account found = repository.findByName(first.getName());
+		assertEquals("second note", found.getNote());
+	}
+
+	@Test
+	public void shouldReturnNullWhenAccountNotFound() {
+		Account found = repository.findByName("does-not-exist");
+		assertNull(found);
 	}
 
 	private Account getStubAccount() {

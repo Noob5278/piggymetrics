@@ -42,7 +42,9 @@ public class AccountControllerTest {
 	@Before
 	public void setup() {
 		initMocks(this);
-		this.mockMvc = MockMvcBuilders.standaloneSetup(accountController).build();
+		this.mockMvc = MockMvcBuilders.standaloneSetup(accountController)
+				.setControllerAdvice(new ErrorHandler())
+				.build();
 	}
 
 	@Test
@@ -144,5 +146,22 @@ public class AccountControllerTest {
 
 		mockMvc.perform(post("/").principal(new UserPrincipal("test")).contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	public void shouldReturnFieldErrorsOnMethodArgumentNotValid() throws Exception {
+
+		final User user = new User();
+		user.setUsername("t");
+		user.setPassword("12345");
+
+		String json = mapper.writeValueAsString(user);
+
+		mockMvc.perform(post("/").principal(new UserPrincipal("test")).contentType(MediaType.APPLICATION_JSON).content(json))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(jsonPath("$.error").value("Bad Request"))
+				.andExpect(jsonPath("$.message").value("Validation failed"))
+				.andExpect(jsonPath("$.fieldErrors").isArray());
 	}
 }
