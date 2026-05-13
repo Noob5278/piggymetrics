@@ -11,9 +11,12 @@ import org.mockito.Mock;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -145,5 +148,74 @@ public class AccountServiceTest {
 
 		when(accountService.findByName("test")).thenReturn(null);
 		accountService.saveChanges("test", update);
+	}
+
+	@Test
+	public void shouldReturnNullWhenFindByNameDoesNotMatch() {
+		when(repository.findByName("missing")).thenReturn(null);
+
+		Account found = accountService.findByName("missing");
+
+		assertNull(found);
+		verify(repository, times(1)).findByName("missing");
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void shouldFailToCreateWhenAccountAlreadyExists() {
+		User user = new User();
+		user.setUsername("existing");
+		user.setPassword("p@ssword");
+
+		Account existing = new Account();
+		existing.setName("existing");
+
+		when(repository.findByName("existing")).thenReturn(existing);
+
+		try {
+			accountService.create(user);
+		} finally {
+			verify(repository, times(1)).findByName("existing");
+			verify(authClient, never()).createUser(any(User.class));
+			verify(repository, never()).save(any(Account.class));
+		}
+	}
+
+	@Test(expected = NullPointerException.class)
+	public void shouldFailToSaveChangesWhenUpdateIsNull() {
+		Account existing = new Account();
+		when(repository.findByName("test")).thenReturn(existing);
+
+		accountService.saveChanges("test", null);
+	}
+
+	@Test
+	public void shouldSaveChangesWithEmptyIncomesAndExpenses() {
+		Saving saving = new Saving();
+		saving.setAmount(new BigDecimal(0));
+		saving.setCurrency(Currency.USD);
+		saving.setInterest(new BigDecimal(0));
+		saving.setDeposit(false);
+		saving.setCapitalization(false);
+
+		final Account update = new Account();
+		update.setName("test");
+		update.setNote("empty");
+		update.setIncomes(Collections.<Item>emptyList());
+		update.setExpenses(Collections.<Item>emptyList());
+		update.setSaving(saving);
+
+		final Account account = new Account();
+
+		when(repository.findByName("test")).thenReturn(account);
+		accountService.saveChanges("test", update);
+
+		assertEquals("empty", account.getNote());
+		assertNotNull(account.getLastSeen());
+		assertTrue(account.getIncomes().isEmpty());
+		assertTrue(account.getExpenses().isEmpty());
+		assertEquals(update.getSaving(), account.getSaving());
+
+		verify(repository, times(1)).save(account);
+		verify(statisticsClient, times(1)).updateStatistics("test", account);
 	}
 }
