@@ -19,9 +19,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.math.BigDecimal;
 import java.util.Date;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -143,6 +146,40 @@ public class AccountControllerTest {
 		String json = mapper.writeValueAsString(user);
 
 		mockMvc.perform(post("/").principal(new UserPrincipal("test")).contentType(MediaType.APPLICATION_JSON).content(json))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	public void shouldReturnEmptyBodyWhenAccountByNameNotFound() throws Exception {
+		when(accountService.findByName("unknown")).thenReturn(null);
+
+		mockMvc.perform(get("/unknown"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(""));
+	}
+
+	@Test
+	public void shouldFailToGetCurrentAccountWithoutPrincipal() {
+		try {
+			mockMvc.perform(get("/current"));
+			fail("Expected NullPointerException because no principal was supplied");
+		} catch (Exception thrown) {
+			Throwable cause = thrown;
+			while (cause != null && !(cause instanceof NullPointerException)) {
+				cause = cause.getCause();
+			}
+			assertNotNull("Expected NullPointerException somewhere in the cause chain", cause);
+		}
+	}
+
+	@Test
+	public void shouldReturnBadRequestForMalformedJsonOnSaveCurrentAccount() throws Exception {
+		String malformedJson = "{ this is not valid json";
+
+		mockMvc.perform(put("/current")
+						.principal(new UserPrincipal("test"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(malformedJson))
 				.andExpect(status().isBadRequest());
 	}
 }
